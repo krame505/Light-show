@@ -12,7 +12,12 @@
 #define Relay_7  8
 #define Relay_8  9
 
-int relays[8] = {Relay_1, Relay_2, Relay_3, Relay_4, Relay_5, Relay_6, Relay_7, Relay_8};
+#define PWM_Relay_1  2  // Arduino Digital I/O pin number
+#define PWM_Relay_2  3
+#define PWM_Relay_3  4
+#define PWM_Relay_4  5
+
+int relays[8];// = {Relay_1, Relay_2, Relay_3, Relay_4, Relay_5, Relay_6, Relay_7, Relay_8};
 
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
@@ -24,6 +29,10 @@ void setup() {
   digitalWrite(Relay_6, RELAY_OFF);
   digitalWrite(Relay_7, RELAY_OFF);
   digitalWrite(Relay_8, RELAY_OFF);  
+  digitalWrite(PWM_Relay_1, RELAY_OFF);
+  digitalWrite(PWM_Relay_2, RELAY_OFF);
+  digitalWrite(PWM_Relay_3, RELAY_OFF);
+  digitalWrite(PWM_Relay_4, RELAY_OFF);  
   
   Serial.begin(115200);
   
@@ -106,50 +115,4 @@ void write_relay(int relay, boolean value) {
 unsigned char hex_to_byte(char c1, char c2) {
   return half_hex_to_byte(c2) + (half_hex_to_byte(c1) << 4);
 }
-
-unsigned char half_hex_to_byte(char c) {
-  switch (c) {
-    case '0':
-      return 0;
-    case '1':
-      return 1;
-    case '2':
-      return 2;
-    case '3':
-      return 3;
-    case '4':
-      return 4;
-    case '5':
-      return 5;
-    case '6':
-      return 6;
-    case '7':
-      return 7;
-    case '8':
-      return 8;
-    case '9':
-      return 9;
-    case 'A':
-    case 'a':
-      return 10;
-    case 'B':
-    case 'b':
-      return 11;
-    case 'C':
-    case 'c':
-      return 12;
-    case 'D':
-    case 'd':
-      return 13;
-    case 'E':
-    case 'e':
-      return 14;
-    case 'F':
-    case 'f':
-      return 15;
-    default:
-      return 0;
-  }
-}
-
 
