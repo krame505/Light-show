@@ -78,4 +78,3 @@ typedef struct {
 	float_t humidity; // humidity percent
 	uint8_t res[1];	// reserved, set to zero
 } msg_SR_t;
-
