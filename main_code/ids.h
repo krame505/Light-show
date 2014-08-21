@@ -5,3 +5,4 @@
 #define ID_D  0x20  //full assignment to digital
 #define ID_PN 0x30  //pwm
 #define ID_S  0x40  //status request
+#define ID_SR 0x50  //status reply
