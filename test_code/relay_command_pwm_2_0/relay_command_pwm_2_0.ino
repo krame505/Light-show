@@ -10,6 +10,8 @@
 
 int relays[4] = {Relay_1, Relay_2, Relay_3, Relay_4};
 
+#define PACKET_LEN 8
+
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
   digitalWrite(Relay_1, RELAY_OFF);
@@ -19,7 +21,7 @@ void setup() {
   
   Serial.begin(115200);
   
-  Serial.println("PWM relay command code version 1.0");
+  Serial.println("PWM relay command code version 2.0");
   Serial.println("Initalizing...");
 //---( THEN set pins as outputs )----  
   for (int i = 0; i < 4; i++) {
@@ -32,34 +34,35 @@ void setup() {
 
 void loop()   /****** LOOP: RUNS CONSTANTLY ******/
 { 
-  char c[8];
-  if (Serial.available() >= 2) {
-    for (int i = 0; i < 8; i++) {
+  char c[PACKET_LEN * 2];
+  if (Serial.available() >= PACKET_LEN * 2) {
+    for (int i = 0; i < PACKET_LEN * 2; i++) {
       delay(10);
       c[i] = Serial.read();
     }
     
     Serial.print("Received hex packets: ");
-    for (int i = 0; i < 8; i += 2) {
+    for (int i = 0; i < PACKET_LEN * 2; i += 2) {
       Serial.print(c[i]);
       Serial.print(c[i + 1]);
       Serial.print(' ');
     }
     Serial.println();
     
-    unsigned char data[4];
-    for (int i = 0; i < 4; i++) {
+    unsigned char data[PACKET_LEN];
+    for (int i = 0; i < PACKET_LEN; i++) {
       data[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
     }
-    
+    /*
     Serial.print("Decimal conversion:  ");
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < PACKET_LEN; i++) {
       Serial.print(data[i], DEC);
       Serial.print(" ");
     }
     Serial.println();
+    */
     Serial.print("Binary conversion:   ");
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < PACKET_LEN; i++) {
       print_bin(data[i]);
       Serial.print(" ");
     }
@@ -70,11 +73,11 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     Serial.println("Done.  ");
   }
   else {
-    if (Serial.available() > 0 && Serial.available() < 8) {
+    if (Serial.available() > 0 && Serial.available() < PACKET_LEN * 2) {
       Serial.flush();
       delay(500);
     }
-    if (Serial.available() > 0 && Serial.available() < 8) {
+    if (Serial.available() > 0 && Serial.available() < PACKET_LEN * 2) {
       Serial.print("Incomplete packet detected: ");
       while (Serial.available()) {
         Serial.print((char)Serial.read());
