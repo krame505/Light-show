@@ -138,10 +138,10 @@ void setup() {
 void loop()   /****** LOOP: RUNS CONSTANTLY ******/
 {
   if (radio.available()) {
-    Serial.println("Message incoming...");
+    Serial.println("Radio packet incoming...");
     radio.read(data, PACKET_LEN);
     
-    Serial.print("Received hex packets: ");
+    Serial.print("Received hex bytes: ");
     for (int i = 0; i < PACKET_LEN; i++) {
       print_hex(data[i]);
       Serial.print(" ");
@@ -166,22 +166,26 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
   }
   else if (Serial.available() >= PACKET_LEN * 2) {
     char c[PACKET_LEN * 2];
+    
+    Serial.print("Serial message incoming: ");
     for (int i = 0; i < PACKET_LEN * 2; i++) {
       delay(10);
       c[i] = Serial.read();
-    }
-    
-    Serial.print("Received hex packets: ");
-    for (int i = 0; i < PACKET_LEN * 2; i += 2) {
       Serial.print(c[i]);
-      Serial.print(c[i + 1]);
-      Serial.print(' ');
     }
     Serial.println();
     
     for (int i = 0; i < PACKET_LEN; i++) {
       data[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
     }
+    
+    Serial.print("Received hex bytes: ");
+    for (int i = 0; i < PACKET_LEN; i++) {
+      print_hex(data[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+    
     /*
     Serial.print("Decimal conversion:  ");
     for (int i = 0; i < PACKET_LEN; i++) {
