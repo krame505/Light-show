@@ -10,6 +10,6 @@ void loop() {
   int value = analogRead(ADDRESS_PIN);
   Serial.print(value, DEC);
   Serial.print("   ");
-  Serial.println(value / 256, DEC);
+  Serial.println(value / 256 + 1, DEC);
   delay(500);
 }

@@ -10,14 +10,13 @@
 #define ID_D  0x20  //full assignment to digital
 #define ID_PN 0x30  //pwm
 #define ID_S  0x40  //status request
+#define ID_SR 0x50  //status reply
 
-/*-----( Declare Constants )-----*/
 #define RELAY_ON 0
 #define RELAY_OFF 1
 #define PWM_RELAY_ON 1
 #define PWM_RELAY_OFF 0
-/*-----( Declare objects )-----*/
-/*-----( Declare Variables )-----*/
+
 #define Relay_1  2  // Arduino Digital I/O pin number
 #define Relay_2  3
 #define Relay_3  4
@@ -46,6 +45,14 @@ int relays[8];// = {Relay_1, Relay_2, Relay_3, Relay_4, Relay_5, Relay_6, Relay_
 boolean mode = false;//false = pwm, true = digital
 char address = 0;
 
+//Radio stuff
+RF24 radio(15,16);
+// Radio pipe addresses for the 2 nodes to communicate.
+const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+
+//Misc
+boolean data_ready = false;
+unsigned char data[PACKET_LEN];
 
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
@@ -108,6 +115,12 @@ void setup() {
   Serial.print("Found address ");
   Serial.println(address, DEC);
   
+  Serial.println("Starting radio...");
+  radio.openWritingPipe(pipes[0]);
+  radio.openReadingPipe(1,pipes[1]);
+  radio.startListening();
+  radio.printDetails();
+  
   Serial.println("Done initalizing.");
 
 }//--(end setup )---
@@ -115,25 +128,15 @@ void setup() {
 
 void loop()   /****** LOOP: RUNS CONSTANTLY ******/
 {
-  char c[PACKET_LEN * 2];
-  if (Serial.available() >= PACKET_LEN * 2) {
-    for (int i = 0; i < PACKET_LEN * 2; i++) {
-      delay(10);
-      c[i] = Serial.read();
-    }
+  if (radio.available() >= PACKET_LEN) {
+    Serial.println("Message incoming...");
+    radio.read(data, PACKET_LEN);
     
     Serial.print("Received hex packets: ");
-    for (int i = 0; i < PACKET_LEN * 2; i += 2) {
-      Serial.print(c[i]);
-      Serial.print(c[i + 1]);
-      Serial.print(' ');
+    for (int i = 0; i < PACKET_LEN; i++) {
+      printf("%2x ", data[i]);
     }
     Serial.println();
-    
-    unsigned char data[PACKET_LEN];
-    for (int i = 0; i < PACKET_LEN; i++) {
-      data[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
-    }
     /*
     Serial.print("Decimal conversion:  ");
     for (int i = 0; i < PACKET_LEN; i++) {
@@ -149,6 +152,11 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     }
     Serial.println();
     
+    data_ready = true;
+  }
+    
+  if (data_ready) { 
+    char status_message[] = {ID_SR, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     switch (data[0]) {
       case ID_DN:
         if (mode && data[1] == address) {
@@ -184,28 +192,22 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
         }
         break;
       case ID_S:
-        Serial.println("Status packets not yet implimented.");
+        Serial.print("Sending status... ");
+        radio.stopListening();
+        status_message[1] = address;
+        radio.write(status_message, PACKET_LEN);
+        radio.startListening();
+        Serial.println("Done.  ");
         break;
       default:
         Serial.print("Invalid message ID: ");
-        Serial.println(data[1]);
+        printf("%2x", data[1]);
+        Serial.println();
         break;
     }
   }
-  else {
-    if (Serial.available() > 0 && Serial.available() < PACKET_LEN * 2) {
-      Serial.flush();
-      delay(500);
-    }
-    if (Serial.available() > 0 && Serial.available() < PACKET_LEN * 2) {
-      Serial.print("Incomplete packet detected: ");
-      while (Serial.available()) {
-        Serial.print((char)Serial.read());
-      }
-      Serial.println();
-    }
-  }
 }//--(end main loop )---
+
 void write_relays(unsigned char data) {
   int mod = 128;
   for (int i = 0; i < 8; i++) {
