@@ -94,3 +94,15 @@ typedef struct {
 	float humidity; // humidity percent
 	uint8_t res[1];	// reserved, set to zero
 } msg_SR_t;
+
+//access a message as any message type
+typedef union {
+        void *raw;
+        uint8_t bytes[8];
+        msg_M_t msg_M;
+        msg_DN_t msg_DN;
+        msg_D_t msg_D;
+        msg_PN_t msg_PN;
+        msg_S_t msg_S;
+        msg_SR_t msg_SR;
+} msg_t;

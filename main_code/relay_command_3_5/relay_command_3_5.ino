@@ -56,7 +56,7 @@ const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
 
 //Misc
 boolean data_ready = false;
-unsigned char data[PACKET_LEN];
+msg_t msg;
 
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
@@ -138,16 +138,15 @@ void setup() {
 
 }//--(end setup )---
 
-
-void loop()   /****** LOOP: RUNS CONSTANTLY ******/
-{
+/****** LOOP: RUNS CONSTANTLY ******/
+void loop() {
   if (radio.available()) {
     Serial.println("Radio packet incoming...");
-    radio.read(data, PACKET_LEN);
+    radio.read(msg.raw, PACKET_LEN);
     
     Serial.print("Received hex bytes: ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
+      print_hex(msg.bytes[i]);
       Serial.print(" ");
     }
     Serial.println();
@@ -161,7 +160,7 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     */
     Serial.print("Binary conversion:   ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_bin(data[i]);
+      print_bin(msg.bytes[i]);
       Serial.print(" ");
     }
     Serial.println();
@@ -180,12 +179,12 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     Serial.println();
     
     for (int i = 0; i < PACKET_LEN; i++) {
-      data[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
+      msg.bytes[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
     }
     
     Serial.print("Received hex bytes: ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
+      print_hex(msg.bytes[i]);
       Serial.print(" ");
     }
     Serial.println();
@@ -193,14 +192,14 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     /*
     Serial.print("Decimal conversion:  ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      Serial.print(data[i], DEC);
+      Serial.print(msg.bytes[i], DEC);
       Serial.print(" ");
     }
     Serial.println();
     */
     Serial.print("Binary conversion:   ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_bin(data[i]);
+      print_bin(msg.bytes[i]);
       Serial.print(" ");
     }
     Serial.println();
@@ -219,24 +218,66 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
   }
   
   if (data_ready) { 
-    msg_SR_t status_message;
-    status_message.id = ID_SR;
+    msg_t status_message;
+    status_message.msg_SR.id = ID_SR;
  //   status_message.res[0] = 0;
  /* Serial.print("Received hex packets: ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
+      print_hex(msg.bytes[i]);
       Serial.print(" ");
     }
     Serial.println();*/
-    switch (data[0]) {
+    switch (msg.bytes[0]) {
       case ID_DN:
-        if (mode && (((msg_DN_t)data)).N == address || ((msg_DN_t)data).N == 0) {
+        if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
           Serial.print("Writing relays... ");
-          write_relays(((msg_DN_t)data).D1);
+          write_relays(msg.msg_DN.D1);
+          Serial.println("Done.  ");
+        }
+      break;
+      case ID_D:
+        if (mode) {
+          Serial.print("Writing relays... ");
+          write_relays(msg.msg_D.D[address]);
           Serial.println("Done.  ");
         }
         break;
-
+      case ID_PN:
+        if (!mode && (msg.msg_PN.N == address || msg.msg_PN.N  == 0)) {
+          Serial.print("Writing relays... ");
+          write_relays_pwm(msg.msg_PN.P);
+          Serial.println("Done.  ");
+        }
+        break;
+      case ID_M:
+        if (mode) {
+          Serial.print("Writing relays... ");
+          write_relays(msg.msg_M.D[address]);
+          Serial.println("Done.  ");
+        }
+        else {
+          Serial.print("Writing relays... ");
+          if (address == 1) //Change this if more than 1 pwm relay is added
+            write_relays_pwm(msg.msg_M.P);
+          Serial.println("Done.  ");
+        }
+        break;
+      case ID_S:
+        if (msg.msg_S.N == address || msg.msg_S.N == 0) {
+          Serial.print("Sending status... ");
+          radio.stopListening();
+          status_message.msg_SR.N = address;
+          //TODO: temperature and humidity
+          radio.write(status_message.raw, PACKET_LEN);
+          radio.startListening();
+          Serial.println("Done.  ");
+        }
+        break;
+    default:
+        Serial.print("Invalid message ID: ");
+        print_hex(msg.bytes[0]);
+        Serial.println();
+        break;
     }
     Serial.println();
     data_ready = false;
