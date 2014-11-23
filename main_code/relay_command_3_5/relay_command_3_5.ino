@@ -79,7 +79,7 @@ void setup() {
   Serial.begin(115200);
   printf_begin();
   
-  Serial.println("Relay command code version 3.");
+  Serial.println("Relay command code version 3.5");
   Serial.println("Initalizing...");
   pinMode(MODE_PIN, INPUT_PULLUP);
   pinMode(ADDRESS_PIN, INPUT_PULLUP);
@@ -230,33 +230,33 @@ void loop() {
     switch (msg.bytes[0]) {
       case ID_DN:
         if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
-          Serial.print("Writing relays... ");
+          Serial.println("Writing relays... ");
           write_relays(msg.msg_DN.D1);
           Serial.println("Done.  ");
         }
       break;
       case ID_D:
         if (mode) {
-          Serial.print("Writing relays... ");
+          Serial.println("Writing relays...");
           write_relays(msg.msg_D.D[address]);
           Serial.println("Done.  ");
         }
         break;
       case ID_PN:
         if (!mode && (msg.msg_PN.N == address || msg.msg_PN.N  == 0)) {
-          Serial.print("Writing relays... ");
+          Serial.println("Writing relays...");
           write_relays_pwm(msg.msg_PN.P);
           Serial.println("Done.  ");
         }
         break;
       case ID_M:
         if (mode) {
-          Serial.print("Writing relays... ");
+          Serial.println("Writing relays...");
           write_relays(msg.msg_M.D[address]);
           Serial.println("Done.  ");
         }
         else {
-          Serial.print("Writing relays... ");
+          Serial.println("Writing relays...");
           if (address == 1) //Change this if more than 1 pwm relay is added
             write_relays_pwm(msg.msg_M.P);
           Serial.println("Done.  ");
@@ -291,10 +291,17 @@ void write_relays(D_t data) {
 }
 
 void write_relay(int relay, boolean value) {
-  if (value)
+  Serial.print("Set digital channel ");
+  Serial.print(relay, DEC);
+  Serial.print(" to ");
+  if (value) {
+    Serial.println("ON");
     digitalWrite(relays[relay], RELAY_ON);
-  else
+  }
+  else {
+    Serial.println("OFF");
     digitalWrite(relays[relay], RELAY_OFF);
+  }
 }
 
 void write_relays_pwm(uint8_t data[4]) {
@@ -304,5 +311,9 @@ void write_relays_pwm(uint8_t data[4]) {
 }
 
 void write_relay_pwm(int relay, uint8_t value) {
+  Serial.print("Set pwm channel ");
+  Serial.print(relay, DEC);
+  Serial.print(" to ");
+  Serial.println(value, DEC);
   analogWrite(relays[relay], value);
 }
