@@ -1,0 +1,143 @@
+/*
+ Copyright (C) 2014 by smellyworkshop@github.com
+ Modified by smellyworkshop 2014-08-17
+ 
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ version 2 as published by the Free Software Foundation.
+ */
+
+#include <cstdlib>
+#include <iostream>
+#include <RF24.h>
+
+// Hardware configuration
+
+// Set up nRF24L01 radio on SPI bus 
+// spi device, speed and CSN,only CSN is NEEDED in RPI
+RF24 radio("/dev/spidev0.0",8000000 , 25);  
+
+// Radio pipe addresses for the 2 nodes to communicate.
+const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };  	// GettingStarted
+//const uint64_t pipes[2] = { 0xE8E8F0F0E1LL, 0xF0F0F0F0D2LL }; // led_remote_ls
+
+#define PACKET_LENGTH 8
+uint8_t packet [PACKET_LENGTH] = {0x20,2,0x55,0,0,0,0,0};
+uint8_t rx_packet [PACKET_LENGTH] = {0x20,2,0x55,0,0,0,0,0};
+//bool autobroadcast = true;
+bool autobroadcast = false;
+float delay_s = 1;
+unsigned long delay_ms = 1000;
+unsigned long delay_us = 1000000;
+
+void setup(void)
+{
+  printf("\n\rnRF24l01+ remotecmd\n\r");
+
+  // Setup and configure rf radio
+  radio.begin();
+  radio.setRetries(15,15);	// optionally, increase the delay between retries & # of retries
+  // optionally, reduce the payload size.  seems to improve reliability
+//  radio.setPayloadSize(PACKET_LENGTH);
+  radio.setChannel(0x4c);
+  radio.setPALevel(RF24_PA_MAX);
+
+  // Open pipes to other nodes for communication
+  // Open pipe for writing
+  // Open the 'other' pipe for reading, in position #1 (we can have up to 5 pipes open for reading)
+  radio.openWritingPipe(pipes[0]);
+  radio.openReadingPipe(1,pipes[1]);
+}
+char str[256];
+uint32_t line = 0;
+
+void loop(void)
+{
+	line++;
+    // First, stop listening so we can talk.
+    radio.stopListening();
+	int num_scanned = scanf("%f%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]%hhx%*[, ]",
+		&delay_s,&packet[0],&packet[1],&packet[2],&packet[3],
+		&packet[4],&packet[5],&packet[6],&packet[7]);
+//printf("%f,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,  ",
+printf("%f [%02x %02x %02x %02x %02x %02x %02x %02x]  ",
+		delay_s,packet[0],packet[1],packet[2],packet[3],
+		packet[4],packet[5],packet[6],packet[7]);
+	printf("%s",fgets(str,sizeof(str),stdin));
+	
+	if (num_scanned == -1) {
+		printf("\n\rfinished\n\r");
+		exit (0);
+	} else if (num_scanned < 9) {
+		printf("\n\rline %d -->expected input format: delay (seconds), message ID, data1,...,data7[, optional comment]\n\r",line);
+		printf("aborting with error\n\r");
+		exit (-1);
+	}
+	delay_us = delay_s * 1000000;
+	bool ok = radio.write( &packet, PACKET_LENGTH);
+#ifdef DEBUG  
+    if (ok)
+      printf("line %d -->tx delay: %f s\n\r", line, delay_us/1000000.0);
+#endif //DEBUG
+    if (ok != true)
+      printf("tx failed.\n\r");
+//	usleep(delay_us);
+
+
+//start of added code for reading
+    // Now, continue listening
+    radio.startListening();
+
+    // Wait here until we get a response, or timeout (250ms)
+    unsigned long started_waiting_at = __millis();
+    bool timeout = false;
+    while ( ! radio.available() && ! timeout ) {
+        // by bcatalin » Thu Feb 14, 2013 11:26 am
+        __msleep(5); //add a small delay to let radio.available to check payload
+//      if (__millis() - started_waiting_at > 200 )
+      if (__millis() - started_waiting_at >995 )
+        timeout = true;
+    }
+timeout=false; //DEBUG
+    // Describe the results
+    if ( timeout )
+    {
+      printf("Failed, response timed out.\n\r");
+    }
+    else
+    {
+      // Grab the response, compare, and send to debugging spew
+//      unsigned long got_time;
+//      radio.read( &got_time, sizeof(unsigned long) );
+      radio.read( &rx_packet, PACKET_LENGTH );
+
+      // Spew it
+//      printf("Got response %lu, round-trip delay: %lu\n\r",got_time,__millis()-got_time);
+      printf("Packet received: [%02x %02x %02x %02x %02x %02x %02x %02x] \n\r",
+        rx_packet[0],rx_packet[1],rx_packet[2],rx_packet[3],
+        rx_packet[4],rx_packet[5],rx_packet[6],rx_packet[7]);
+
+    }
+
+    // Try again 1s later
+//    delay(1000);
+//sleep(1);
+
+//end of added code for reading
+
+	usleep(delay_us);
+}
+
+int main(int argc, char** argv)
+{
+	printf("0)%s  1)%s  2)%s\n\r", argv[0], argv[1], argv[2]);
+	if (argc > 1) {
+		autobroadcast = false;
+		sscanf(argv[1],"%lud",&delay_ms);  //read in milliseconds
+		delay_us = delay_ms * 1000;
+	}
+        setup();
+        while(1)
+                loop();
+        return 0;
+}

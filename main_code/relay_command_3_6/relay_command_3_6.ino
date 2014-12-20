@@ -4,6 +4,7 @@
 #include "RF24.h"
 #include "printf.h"
 #include "ids.h"
+#include "DHT.h"
 
 //packet id defs
 //See ids.h
@@ -18,7 +19,7 @@
 
 #define RELAY_ON 0
 #define RELAY_OFF 1
-#define PWM_RELAY_OsN 1
+#define PWM_RELAY_ON 1
 #define PWM_RELAY_OFF 0
 
 #define Relay_1  2  // Arduino Digital I/O pin number
@@ -42,7 +43,8 @@
 
 int relays[8];// = {Relay_1, Relay_2, Relay_3, Relay_4, Relay_5, Relay_6, Relay_7, Relay_8};
 
-#define PACKET_LEN 8
+//#define PACKET_LEN 8
+#define PACKET_LEN sizeof(msg_t)
 #define NUM_D 3 //for message_M parsing
 #define NUM_P 1
 
@@ -54,9 +56,18 @@ RF24 radio(15,16);
 // Radio pipe addresses for the 2 nodes to communicate.
 const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
 
+//DHT
+#define DHTPIN A0     // what pin we're connected to
+// Uncomment whatever type you're using
+#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT22   // DHT 22  (AM2302)
+//#define DHTTYPE DHT21   // DHT 21 (AM2301)
+
+DHT dht(DHTPIN, DHTTYPE);
+
 //Misc
 boolean data_ready = false;
-unsigned char data[PACKET_LEN];
+msg_t msg;
 
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
@@ -79,7 +90,7 @@ void setup() {
   Serial.begin(115200);
   printf_begin();
   
-  Serial.println("Relay command code version 3.4");
+  Serial.println("Relay command code version 3.6");
   Serial.println("Initalizing...");
   pinMode(MODE_PIN, INPUT_PULLUP);
   pinMode(ADDRESS_PIN, INPUT_PULLUP);
@@ -138,34 +149,12 @@ void setup() {
 
 }//--(end setup )---
 
-
-void loop()   /****** LOOP: RUNS CONSTANTLY ******/
-{
+/****** LOOP: RUNS CONSTANTLY ******/
+void loop() {
   if (radio.available()) {
     Serial.println("Radio packet incoming...");
-    radio.read(data, PACKET_LEN);
     
-    Serial.print("Received hex bytes: ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
-      Serial.print(" ");
-    }
-    Serial.println();
-    /*
-    Serial.print("Decimal conversion:  ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      Serial.print(data[i], DEC);
-      Serial.print(" ");
-    }
-    Serial.println();
-    */
-    Serial.print("Binary conversion:   ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      print_bin(data[i]);
-      Serial.print(" ");
-    }
-    Serial.println();
-    
+    radio.read(msg.bytes, PACKET_LEN);
     data_ready = true;
   }
   else if (Serial.available() >= PACKET_LEN * 2) {
@@ -180,30 +169,8 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     Serial.println();
     
     for (int i = 0; i < PACKET_LEN; i++) {
-      data[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
+      msg.bytes[i] = hex_to_byte(c[i * 2], c[i * 2 + 1]);
     }
-    
-    Serial.print("Received hex bytes: ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
-      Serial.print(" ");
-    }
-    Serial.println();
-    
-    /*
-    Serial.print("Decimal conversion:  ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      Serial.print(data[i], DEC);
-      Serial.print(" ");
-    }
-    Serial.println();
-    */
-    Serial.print("Binary conversion:   ");
-    for (int i = 0; i < PACKET_LEN; i++) {
-      print_bin(data[i]);
-      Serial.print(" ");
-    }
-    Serial.println();
     data_ready = true;
   }
   else if (Serial.available() > 0 && Serial.available() < PACKET_LEN * 2) {
@@ -218,25 +185,86 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
     }
   }
   
-  if (data_ready) { 
-    msg_SR_t status_message;
-    status_message.id = ID_SR;
- //   status_message.res[0] = 0;
- /* Serial.print("Received hex packets: ");
+  if (data_ready) {
+    Serial.print("Received hex bytes: ");
     for (int i = 0; i < PACKET_LEN; i++) {
-      print_hex(data[i]);
+      print_hex(msg.bytes[i]);
       Serial.print(" ");
     }
-    Serial.println();*/
-    switch (data[0]) {
+    Serial.println();
+    
+    Serial.print("Binary conversion:   ");
+    for (int i = 0; i < PACKET_LEN; i++) {
+      print_bin(msg.bytes[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+    
+    msg_t status_message;
+    status_message.msg_SR.id = ID_SR;
+ //   status_message.res[0] = 0;
+ 
+    switch (msg.msg_GEN.id) {
       case ID_DN:
-        if (mode && (((msg_DN_t)data)).N == address || ((msg_DN_t)data).N == 0) {
-          Serial.print("Writing relays... ");
-          write_relays(((msg_DN_t)data).D1);
+        if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
+          write_relays(msg.msg_DN.D1);
+        }
+        break;
+      case ID_D:
+        if (mode) {
+          write_relays(msg.msg_D.D[address - 1]);
+        }
+        break;
+      case ID_PN:
+        if (!mode && (msg.msg_PN.N == address || msg.msg_PN.N  == 0)) {
+          write_relays_pwm(msg.msg_PN.P);
+        }
+        break;
+      case ID_M:
+        if (mode) {
+          write_relays(msg.msg_M.D[address - 1]);
+        }
+        else {
+          if (address == 1) //Update this if more than 1 pwm relay is added
+            write_relays_pwm(msg.msg_M.P);
+        }
+        break;
+      case ID_S:
+        if (msg.msg_S.N == address || msg.msg_S.N == 0) {
+          status_message.msg_SR.N = address;
+          //status_message.msg_SR.temp = (int)(dht.readTemperature());
+          //status_message.msg_SR.humidity = dht.readHumidity();
+  
+          // Check if read failed and exit early (to try again).
+          if (isnan(status_message.msg_SR.humidity)) {
+            Serial.println("Failed to read from DHT sensor!");
+            return;
+          }
+          
+          Serial.print("Temperatute: ");
+          Serial.print(status_message.msg_SR.temp, DEC);
+          Serial.println(" C");
+          Serial.print("Humidity: ");
+          Serial.print(status_message.msg_SR.humidity);
+          Serial.println("% RH");
+          
+          Serial.print("Sending hex bytes: ");
+          for (int i = 0; i < PACKET_LEN; i++) {
+            print_hex(status_message.bytes[i]);
+            Serial.print(" ");
+          }
+          Serial.println();
+          radio.stopListening();
+          radio.write(status_message.raw, PACKET_LEN);
+          radio.startListening();
           Serial.println("Done.  ");
         }
         break;
-
+    default:
+        Serial.print("Invalid message ID: ");
+        print_hex(msg.msg_GEN.id);
+        Serial.println();
+        break;
     }
     Serial.println();
     data_ready = false;
@@ -244,24 +272,52 @@ void loop()   /****** LOOP: RUNS CONSTANTLY ******/
 }//--(end main loop )---
 
 void write_relays(D_t data) {
-  for (int i = 0; i < 8; i++) {
-    write_relay(i, data.bits[i]);
-  }
+  Serial.println("Writing relays... ");
+//  for (int i = 0; i < 8; i++) {
+//    write_relay(i, data.bits[i]);
+//  }
+  Serial.print("Set digital channels 1-8 to ");
+  Serial.println(data.byte, BIN);
+#if RELAY_OFF
+  data.byte = ~data.byte;
+#endif
+  digitalWrite(relays[0], data.relay.in1);
+  digitalWrite(relays[1], data.relay.in2);
+  digitalWrite(relays[2], data.relay.in3);
+  digitalWrite(relays[3], data.relay.in4);
+  digitalWrite(relays[4], data.relay.in5);
+  digitalWrite(relays[5], data.relay.in6);
+  digitalWrite(relays[6], data.relay.in7);
+  digitalWrite(relays[7], data.relay.in8);
+  Serial.println("Done.  ");
 }
 
 void write_relay(int relay, boolean value) {
-  if (value)
+  Serial.print("Set digital channel ");
+  Serial.print(relay, DEC);
+  Serial.print(" to ");
+  if (value) {
+    Serial.println("ON");
     digitalWrite(relays[relay], RELAY_ON);
-  else
+  }
+  else {
+    Serial.println("OFF");
     digitalWrite(relays[relay], RELAY_OFF);
-}
-
-void write_relays_pwm(uint8_t data[4]) {
-  for (int i = 0; i < 4; i++) {
-    write_relay_pwm(i, data[i]);
   }
 }
 
+void write_relays_pwm(uint8_t data[4]) {
+  Serial.println("Writing relays... ");
+  for (int i = 0; i < 4; i++) {
+    write_relay_pwm(i, data[i]);
+  }
+  Serial.println("Done.  ");
+}
+
 void write_relay_pwm(int relay, uint8_t value) {
+  Serial.print("Set pwm channel ");
+  Serial.print(relay, DEC);
+  Serial.print(" to ");
+  Serial.println(value, DEC);
   analogWrite(relays[relay], value);
 }

@@ -1,3 +1,7 @@
+//Utility functions for hex conversion and bit math.  
+unsigned char hex_to_byte(char c1, char c2) {
+  return half_hex_to_byte(c2) + (half_hex_to_byte(c1) << 4);
+}
 
 unsigned char half_hex_to_byte(char c) {
   switch (c) {
@@ -42,4 +46,19 @@ unsigned char half_hex_to_byte(char c) {
     default:
       return 0;
   }
+}
+
+void print_bin(uint8_t data) {
+  int mod = 128;
+  for (int i = 0; i < 8; i++) {
+    Serial.print(data - mod >= 0, DEC);
+    data = (data - mod >= 0)? data - mod : data;
+    mod /= 2;
+  }
+}
+
+void print_hex(uint8_t data) {
+   if (data < 16) {Serial.print("0");}
+
+   Serial.print(data, HEX);
 }

@@ -12,8 +12,14 @@ typedef union {
 		uint8_t in8:1;
 	} relay;
 	uint8_t byte;
-        boolean bits[8];
-} D_t;
+//        boolean bits[8];
+}  D_t;
+
+//generic message
+typedef struct {
+	uint8_t id;
+        uint8_t res[7];
+} msg_GEN_t;
 
 //packet id defs
 #define ID_M  0x00  //full assignment
@@ -94,3 +100,16 @@ typedef struct {
 	float humidity; // humidity percent
 	uint8_t res[1];	// reserved, set to zero
 } msg_SR_t;
+
+//access a message as any message type
+typedef union {
+        void *raw;
+        uint8_t bytes[8];
+        msg_GEN_t msg_GEN;
+        msg_M_t msg_M;
+        msg_DN_t msg_DN;
+        msg_D_t msg_D;
+        msg_PN_t msg_PN;
+        msg_S_t msg_S;
+        msg_SR_t msg_SR;
+} msg_t;
