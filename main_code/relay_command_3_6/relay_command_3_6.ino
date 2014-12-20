@@ -209,10 +209,10 @@ void loop() {
         if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
           write_relays(msg.msg_DN.D1);
         }
-      break;
+        break;
       case ID_D:
         if (mode) {
-          write_relays(msg.msg_D.D[address]);
+          write_relays(msg.msg_D.D[address - 1]);
         }
         break;
       case ID_PN:
@@ -222,7 +222,7 @@ void loop() {
         break;
       case ID_M:
         if (mode) {
-          write_relays(msg.msg_M.D[address]);
+          write_relays(msg.msg_M.D[address - 1]);
         }
         else {
           if (address == 1) //Update this if more than 1 pwm relay is added
@@ -231,10 +231,9 @@ void loop() {
         break;
       case ID_S:
         if (msg.msg_S.N == address || msg.msg_S.N == 0) {
-          radio.stopListening();
           status_message.msg_SR.N = address;
-          status_message.msg_SR.temp = (int)(dht.readTemperature());
-          status_message.msg_SR.humidity = dht.readHumidity();
+          //status_message.msg_SR.temp = (int)(dht.readTemperature());
+          //status_message.msg_SR.humidity = dht.readHumidity();
   
           // Check if read failed and exit early (to try again).
           if (isnan(status_message.msg_SR.humidity)) {
@@ -251,10 +250,11 @@ void loop() {
           
           Serial.print("Sending hex bytes: ");
           for (int i = 0; i < PACKET_LEN; i++) {
-            print_hex(msg.bytes[i]);
+            print_hex(status_message.bytes[i]);
             Serial.print(" ");
           }
           Serial.println();
+          radio.stopListening();
           radio.write(status_message.raw, PACKET_LEN);
           radio.startListening();
           Serial.println("Done.  ");
@@ -277,7 +277,7 @@ void write_relays(D_t data) {
 //    write_relay(i, data.bits[i]);
 //  }
   Serial.print("Set digital channels 1-8 to ");
-  Serial.print(data.byte, BIN);
+  Serial.println(data.byte, BIN);
 #if RELAY_OFF
   data.byte = ~data.byte;
 #endif

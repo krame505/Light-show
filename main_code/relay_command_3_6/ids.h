@@ -75,10 +75,10 @@ typedef struct {
 	uint8_t N;	// Arduino number
         union {
           struct {
-	    uint8_t P1;	// Arduino #4 PWM value for SS switch #1
-	    uint8_t P2;	// Arduino #4 PWM value for SS switch #2
-	    uint8_t P3;	// Arduino #4 PWM value for SS switch #3
-	    uint8_t P4;	// Arduino #4 PWM value for SS switch #4
+	    uint8_t P1;	// Arduino N PWM value for SS switch #1
+	    uint8_t P2;	// Arduino N PWM value for SS switch #2
+	    uint8_t P3;	// Arduino N PWM value for SS switch #3
+	    uint8_t P4;	// Arduino N PWM value for SS switch #4
           };
           uint8_t P[4];
         };
