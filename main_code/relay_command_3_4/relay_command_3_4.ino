@@ -79,7 +79,7 @@ void setup() {
   Serial.begin(115200);
   printf_begin();
   
-  Serial.println("Relay command code version 3.");
+  Serial.println("Relay command code version 3.4");
   Serial.println("Initalizing...");
   pinMode(MODE_PIN, INPUT_PULLUP);
   pinMode(ADDRESS_PIN, INPUT_PULLUP);
