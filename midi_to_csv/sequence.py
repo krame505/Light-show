@@ -26,9 +26,10 @@ def parse_file(filename):
 def get_sequence(commands, time_scale):
     commands = sorted(commands, key=lambda c: c.time);
     result = [['0', '00', '00', '00', '00', '00', '00', '00', '00']];
-    time = 0;
+    prev_time = 0;
     for c in commands:
-        time = c.time * time_scale - time;
+        time = c.time * time_scale - prev_time;
+        prev_time = c.time * time_scale
         new_commands = [];
         if c.command == 'Note_on_c':
             if c.channel == 1:
