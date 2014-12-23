@@ -45,6 +45,8 @@ typedef struct {
 } msg_M_t;
 
 #define ID_DN 0x10  //digital command to Arduino N
+#define ID_DSN 0x11  //digital command to Arduino N, turn relays indicated by mask on
+#define ID_DCN 0x12  //digital command to Arduino N, turn relays indicated by mask off
 typedef struct {
 	uint8_t id;	// message ID should be set to ID_DN
 	uint8_t N;	// Arduino number
@@ -53,6 +55,8 @@ typedef struct {
 } msg_DN_t;
 
 #define ID_D  0x20  //digital command to all binary relay Arduinos
+#define ID_DS  0x21  //digital command to all binary relay Arduinos, turn relays indicated by mask on
+#define ID_DC  0x22  //digital command to all binary relay Arduinos, turn relays indicated by mask off
 typedef struct {
 	uint8_t id;		// message ID should be set to ID_D
 	union {			// allows access via array or name, e.g. D3 or D[3]

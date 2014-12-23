@@ -42,6 +42,7 @@
 #define ADDRESS_PIN A3
 
 int relays[8];// = {Relay_1, Relay_2, Relay_3, Relay_4, Relay_5, Relay_6, Relay_7, Relay_8};
+D_t digital_status;
 
 //#define PACKET_LEN 8
 #define PACKET_LEN sizeof(msg_t)
@@ -71,7 +72,6 @@ msg_t msg;
 
 void setup() {
 //-------( Initialize Pins so relays are inactive at reset)----
-
   digitalWrite(Relay_1, RELAY_OFF);
   digitalWrite(Relay_2, RELAY_OFF);
   digitalWrite(Relay_3, RELAY_OFF);
@@ -79,7 +79,8 @@ void setup() {
   digitalWrite(Relay_5, RELAY_OFF);
   digitalWrite(Relay_6, RELAY_OFF);
   digitalWrite(Relay_7, RELAY_OFF);
-  digitalWrite(Relay_8, RELAY_OFF);  
+  digitalWrite(Relay_8, RELAY_OFF);
+  digital_status.byte = 0;
 
 /*
   digitalWrite(PWM_Relay_1, PWM_RELAY_OFF);
@@ -206,13 +207,31 @@ void loop() {
  
     switch (msg.msg_GEN.id) {
       case ID_DN:
+      case ID_DSN:
+      case ID_DCN:
         if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
-          write_relays(msg.msg_DN.D1);
+          D_t assign = msg.msg_DN.D1;
+          if (msg.msg_GEN.id == ID_DN)
+            digital_status.byte = assign.byte;
+          else if (msg.msg_GEN.id == ID_DSN)
+            digital_status.byte |= assign.byte;
+          else if (msg.msg_GEN.id == ID_DCN)
+            digital_status.byte &= ~assign.byte;
+          write_relays(digital_status);
         }
         break;
       case ID_D:
+      case ID_DS:
+      case ID_DC:
         if (mode) {
-          write_relays(msg.msg_D.D[address - 1]);
+          D_t assign = msg.msg_D.D[address - 1];
+          if (msg.msg_GEN.id == ID_D)
+            digital_status.byte = assign.byte;
+          else if (msg.msg_GEN.id == ID_DS)
+            digital_status.byte |= assign.byte;
+          else if (msg.msg_GEN.id == ID_DC)
+            digital_status.byte &= ~assign.byte;
+          write_relays(digital_status);
         }
         break;
       case ID_PN:
@@ -232,8 +251,8 @@ void loop() {
       case ID_S:
         if (msg.msg_S.N == address || msg.msg_S.N == 0) {
           status_message.msg_SR.N = address;
-          //status_message.msg_SR.temp = (int)(dht.readTemperature());
-          //status_message.msg_SR.humidity = dht.readHumidity();
+          status_message.msg_SR.temp = (int)(dht.readTemperature());
+          status_message.msg_SR.humidity = dht.readHumidity();
   
           // Check if read failed and exit early (to try again).
           if (isnan(status_message.msg_SR.humidity)) {
@@ -277,7 +296,8 @@ void write_relays(D_t data) {
 //    write_relay(i, data.bits[i]);
 //  }
   Serial.print("Set digital channels 1-8 to ");
-  Serial.println(data.byte, BIN);
+  print_bin(data.byte);
+  Serial.println();
 #if RELAY_OFF
   data.byte = ~data.byte;
 #endif
