@@ -1,0 +1,6 @@
+function parse_csv(text)
+begin
+  lines := explode(text, "\n")
+  result := {}
+  for line in lines do
+    
