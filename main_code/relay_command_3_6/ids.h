@@ -50,7 +50,7 @@ typedef struct {
 typedef struct {
 	uint8_t id;	// message ID should be set to ID_DN
 	uint8_t N;	// Arduino number
-	D_t D1;		// Arduino #1 relay values for relays 1-8
+	D_t D;		// Arduino #1 relay values for relays 1-8
 	uint8_t res[5];	// reserved, set to zero
 } msg_DN_t;
 
@@ -89,14 +89,23 @@ typedef struct {
 	uint8_t res[2];	// reserved, set to zero
 } msg_PN_t;
 
-#define ID_S  0x40  //status request
+#define ID_PNC 0x40  // send command PWM command to Arduino N channel C
+typedef struct {
+	uint8_t id;	// message ID should be set to ID_PN
+	uint8_t N;	// Arduino number
+	uint8_t C;	// Channel number.  0 = all channels
+	uint8_t P;	// Arduino N PWM value for SS switch C
+	uint8_t res[4];	// reserved, set to zero
+} msg_PNC_t;
+
+#define ID_S  0x80  //status request
 typedef struct {
 	uint8_t id;	// message ID should be set to ID_PN
 	uint8_t N;	// Arduino number
 	uint8_t res[6];	// reserved, set to zero
 } msg_S_t;
 
-#define ID_SR  0x50  //status response
+#define ID_SR  0x90  //status response
 typedef struct {
 	uint8_t id;	// message ID should be set to ID_PN
 	uint8_t N;	// Arduino number
@@ -114,6 +123,7 @@ typedef union {
         msg_DN_t msg_DN;
         msg_D_t msg_D;
         msg_PN_t msg_PN;
+        msg_PNC_t msg_PNC;
         msg_S_t msg_S;
         msg_SR_t msg_SR;
 } msg_t;

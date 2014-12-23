@@ -210,7 +210,7 @@ void loop() {
       case ID_DSN:
       case ID_DCN:
         if (mode && (msg.msg_DN.N == address || msg.msg_DN.N == 0)) {
-          D_t assign = msg.msg_DN.D1;
+          D_t assign = msg.msg_DN.D;
           if (msg.msg_GEN.id == ID_DN)
             digital_status.byte = assign.byte;
           else if (msg.msg_GEN.id == ID_DSN)
@@ -235,8 +235,17 @@ void loop() {
         }
         break;
       case ID_PN:
-        if (!mode && (msg.msg_PN.N == address || msg.msg_PN.N  == 0)) {
+        if (!mode && (msg.msg_PN.N == address || msg.msg_PN.N == 0)) {
           write_relays_pwm(msg.msg_PN.P);
+        }
+        break;
+      case ID_PNC:
+        if (!mode && (msg.msg_PNC.N == address || msg.msg_PNC.N  == 0)) {
+          if (msg.msg_PNC.C == 0)
+            for (int i = 1; i <= 4; i++)
+              write_relay_pwm(i, msg.msg_PNC.P);
+          else
+            write_relay_pwm((int)msg.msg_PNC.C, msg.msg_PNC.P);
         }
         break;
       case ID_M:
@@ -328,8 +337,8 @@ void write_relay(int relay, boolean value) {
 
 void write_relays_pwm(uint8_t data[4]) {
   Serial.println("Writing relays... ");
-  for (int i = 0; i < 4; i++) {
-    write_relay_pwm(i, data[i]);
+  for (int i = 1; i <= 4; i++) {
+    write_relay_pwm(i, data[i - 1]);
   }
   Serial.println("Done.  ");
 }
@@ -339,5 +348,5 @@ void write_relay_pwm(int relay, uint8_t value) {
   Serial.print(relay, DEC);
   Serial.print(" to ");
   Serial.println(value, DEC);
-  analogWrite(relays[relay], value);
+  analogWrite(relays[relay - 1], value);
 }
