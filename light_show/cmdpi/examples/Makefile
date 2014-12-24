@@ -19,7 +19,7 @@ CCFLAGS=-Wall -Ofast -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf
 
 # define all programs
 #PROGRAMS = scanner pingtest pongtest
-PROGRAMS = rpi-hub scanner pingtest pongtest sendto_hub remotecmd remotecmd1 remotecmd2
+PROGRAMS = rpi-hub scanner pingtest pongtest sendto_hub remotecmd remotecmd1 remotecmd2 remotecmd3 remotecmd2.1
 SOURCES = ${PROGRAMS:=.cpp}
 
 all: ${PROGRAMS}
