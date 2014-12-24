@@ -154,7 +154,8 @@ def make_csv(sequence):
 parser = argparse.ArgumentParser();
 
 #-ts TIME_SCALE
-parser.add_argument("-ts", "--time_scale", dest = "time_scale", default = '1', help="Time scale to multiply each time step in the source to get seconds")
+parser.add_argument("-ts", "--time_scale", dest = "time_scale", default = '1', help="Time scale to multiply each time step in the source to get seconds");
+parser.add_argument("-t", "--tempo", dest = "tempo", default = '80', help="Tempo to use to automaticly calculate the time step");
 
 args = parser.parse_args()
 
@@ -163,7 +164,7 @@ for line in sys.stdin:
     in_text += line;
 
 commands = parse(in_text);
-sequence = get_sequence(commands, float(args.time_scale));
+sequence = get_sequence(commands, float(args.time_scale) if args.time_scale != '1' else 60 / (int(args.tempo) * 192));
 out_text = make_csv(sequence);
 
 print(out_text);
